@@ -1,5 +1,7 @@
 A plugin to scan container images for vulnerabilities using snyk.
 
+By using this plugin you agree to accept the terms and conditions set out by snyk and docker. More details can be found [here](https://snyk.io/learn/docker-security-scanning/)
+
 # Usage
 
 The following settings changes this plugin's behavior.
