@@ -17,12 +17,20 @@ kind: pipeline
 name: default
 
 steps:
-- name: run drone-plugins/drone-snyk plugin
+- name: scan
   image: drone-plugins/drone-snyk
   pull: if-not-exists
+  privileged: true
   settings:
-    param1: foo
-    param2: bar
+      repo: namespace/repo
+      dockerfile: link to dockerfile in repo
+      image: image name
+      username:
+        from_secret: username
+      password:
+        from_secret: password
+      snyk:
+        from_secret: snyk
 ```
 
 # Building
