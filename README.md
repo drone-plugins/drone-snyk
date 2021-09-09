@@ -6,8 +6,9 @@ By using this plugin you agree to accept the terms and conditions set out by sny
 
 The following settings changes this plugin's behavior.
 
-* param1 (optional) does something.
-* param2 (optional) does something different.
+* dockerfile uri to dockerfile in repo.
+* image the name of the image you wish to scan.
+* snyk (optional) auth token for snyk (without this you will get 10 scans a month)
 
 Below is an example `.drone.yml` that uses this plugin.
 
