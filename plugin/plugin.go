@@ -97,6 +97,7 @@ func Exec(ctx context.Context, args Args) error {
 
 		err = cmd.Run()
 		if err != nil {
+			fmt.Println( err)
 			return err
 		}
 	}
