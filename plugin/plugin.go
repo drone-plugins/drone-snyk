@@ -75,7 +75,7 @@ func Exec(ctx context.Context, args Args) error {
 		}
 		time.Sleep(time.Second * 1)
 	}
-    // docker login
+	// docker login
 	cmdL := commandLogin(args.Login)
 	err := cmdL.Run()
 	if err != nil {
@@ -87,6 +87,8 @@ func Exec(ctx context.Context, args Args) error {
 	var cmds []*exec.Cmd
 	if args.AuthToken != "" {
 		cmds = append(cmds, snykLogin(args.AuthToken))
+	} else {
+		fmt.Println("Snyk credentials not provided. Unauthenticated mode only allows 10 scans a month")
 	}
 	cmds = append(cmds, scan(args.Image, args.Dockerfile))
 	// execute all commands in batch mode.
@@ -97,7 +99,7 @@ func Exec(ctx context.Context, args Args) error {
 
 		err = cmd.Run()
 		if err != nil {
-			fmt.Println( err)
+			fmt.Println(err)
 			return err
 		}
 	}
@@ -126,7 +128,6 @@ func commandLoginEmail(login Login) *exec.Cmd {
 		login.Registry,
 	)
 }
-
 
 // helper function to create the docker info command.
 func commandInfo() *exec.Cmd {

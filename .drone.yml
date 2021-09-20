@@ -10,7 +10,7 @@ steps:
   - go test ./...
 
 - name: publish
-  image: plugins/docker
+  image: drone-plugins/drone-snyk
   settings:
     repo: drone-plugins/drone-snyk
     auto_tag: true
