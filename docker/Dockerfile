@@ -1,7 +1,7 @@
 FROM alpine:3.6 as alpine
 RUN apk add -U --no-cache ca-certificates
 
-FROM docker:20.10-dind
+FROM docker:19.03-dind
 
 RUN apk --update add \
     curl
