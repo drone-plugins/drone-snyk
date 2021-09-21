@@ -10,9 +10,9 @@ steps:
   - go test ./...
 
 - name: publish
-  image: plugins/drone-snyk
+  image: plugins/docker
   settings:
-    repo: drone-plugins/drone-snyk
+    repo: plugins/drone-snyk
     auto_tag: true
     dockerfile: docker/Dockerfile
     username:
