@@ -10,12 +10,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 const dockerExe = "/usr/local/bin/docker"
 const dockerdExe = "/usr/local/bin/dockerd"
+const dockerHome = "/root/.docker/"
 
 type (
 	// Login defines Docker  parameters.
@@ -76,13 +78,41 @@ func Exec(ctx context.Context, args Args) error {
 		time.Sleep(time.Second * 1)
 	}
 	// docker login
-	cmdL := commandLogin(args.Login)
-	err := cmdL.Run()
-	if err != nil {
-		return fmt.Errorf("error authenticating: %s", err)
+	// for debugging purposes, log the type of authentication
+	// credentials that have been provided.
+	switch {
+	case args.Login.Password != "" && args.Login.Config != "":
+		fmt.Println("Detected registry credentials and registry credentials file")
+	case args.Login.Password != "":
+		fmt.Println("Detected registry credentials")
+	case args.Login.Config != "":
+		fmt.Println("Detected registry credentials file")
+	default:
+		fmt.Println("Registry credentials or Docker config not provided. Guest mode enabled.")
 	}
 
-	fmt.Println("authentication successful")
+	// create Auth Config File
+	if args.Login.Config != "" {
+		os.MkdirAll(dockerHome, 0600)
+
+		path := filepath.Join(dockerHome, "config.json")
+		err := ioutil.WriteFile(path, []byte(args.Login.Config), 0600)
+		if err != nil {
+			return fmt.Errorf("Error writing config.json: %s", err)
+		}
+	}
+
+	// login to the Docker registry
+	if args.Login.Password != "" {
+		cmd := commandLogin(args.Login)
+		raw, err := cmd.CombinedOutput()
+		if err != nil {
+			out := string(raw)
+			out = strings.Replace(out, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.", "", -1)
+			fmt.Println(out)
+			return fmt.Errorf("Error authenticating: exit status 1")
+		}
+	}
 
 	var cmds []*exec.Cmd
 	if args.AuthToken != "" {
@@ -97,7 +127,7 @@ func Exec(ctx context.Context, args Args) error {
 		cmd.Stderr = os.Stderr
 		trace(cmd)
 
-		err = cmd.Run()
+		err := cmd.Run()
 		if err != nil {
 			fmt.Println(err)
 			return err
