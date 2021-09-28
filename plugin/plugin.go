@@ -35,7 +35,7 @@ type (
 		Insecure       bool     `envconfig:"PLUGIN_INSECURE"`                                       // Docker daemon enable insecure registries
 		StorageDriver  string   `envconfig:"PLUGIN_STORAGE_DRIVER"`                                 // Docker daemon storage driver
 		StoragePath    string   `envconfig:"PLUGIN_STORAGE_PATH" default:"/var/lib/docker"`         // Docker daemon storage path
-		Disabled       bool     `envconfig:"PLUGIN_DAEMON_OFF"`                                     // DOcker daemon is disabled (already running)
+		Disabled       bool     `envconfig:"PLUGIN_DAEMON_OFF"`                                     // Docker daemon is disabled (already running)
 		Debug          bool     `envconfig:"PLUGIN_DEBUG"`                                          // Docker daemon started in debug mode
 		Bip            string   `envconfig:"PLUGIN_BIP"`                                            // Docker daemon network bridge IP address
 		DNS            []string `envconfig:"PLUGIN_CUSTOM_DNS"`                                     // Docker daemon dns server
@@ -55,12 +55,23 @@ type Args struct {
 	Dockerfile string `envconfig:"PLUGIN_DOCKERFILE" required:"true"`
 	Image      string `envconfig:"PLUGIN_IMAGE" required:"true"`
 	AuthToken  string `envconfig:"PLUGIN_SNYK"`
+	Severity   string `envconfig:"PLUGIN_SEVERITY"`
 }
 
 // Exec executes the plugin.
 func Exec(ctx context.Context, args Args) error {
 	if !args.Daemon.Disabled {
 		startDaemon(args.Daemon)
+	}
+
+	severityLevel := strings.ToLower(args.Severity)
+	switch severityLevel {
+	case "high",
+		"medium",
+		"low":
+		fmt.Printf("Severity level set at %s\n", severityLevel)
+	default:
+		return fmt.Errorf("invalid severity level input, must be high, medium or low")
 	}
 
 	// poll the docker daemon until it is started. This ensures the daemon is
@@ -120,7 +131,7 @@ func Exec(ctx context.Context, args Args) error {
 	} else {
 		fmt.Println("Snyk credentials not provided. Unauthenticated mode only allows 10 scans a month")
 	}
-	cmds = append(cmds, scan(args.Image, args.Dockerfile))
+	cmds = append(cmds, scan(args.Image, args.Dockerfile, severityLevel))
 	// execute all commands in batch mode.
 	for _, cmd := range cmds {
 		cmd.Stdout = os.Stdout
@@ -164,8 +175,10 @@ func commandInfo() *exec.Cmd {
 	return exec.Command(dockerExe, "info")
 }
 
-func scan(image, dockerfile string) *exec.Cmd {
+func scan(image, dockerfile, severityLevel string) *exec.Cmd {
 	return exec.Command(dockerExe, "scan",
+		"--json",
+		"--severity=" + severityLevel,
 		image,
 		"--file",
 		dockerfile,

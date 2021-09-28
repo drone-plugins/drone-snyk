@@ -10,6 +10,8 @@ The following settings changes this plugin's behavior.
 * image the name of the image you wish to scan.
 * snyk (optional) auth token for snyk (without this you will get 10 scans a month)
 
+> Notice: Be aware that the Docker plugin currently requires privileged capabilities, otherwise the integrated Docker daemon is not able to start.
+
 Below is an example `.drone.yml` that uses this plugin.
 
 ```yaml
@@ -22,7 +24,6 @@ steps:
   pull: if-not-exists
   privileged: true
   settings:
-      repo: namespace/repo
       dockerfile: link to dockerfile in repo
       image: image name
       username:
@@ -31,6 +32,28 @@ steps:
         from_secret: password
       snyk:
         from_secret: snyk
+```
+# Additional Settings
+```text
+REGISTRY // docker registry address
+USERNAME // Docker registry username - required
+PASSWORD // Docker registry password - required
+EMAIL    // Docker registry email
+CONFIG   // Docker Auth Config
+
+REGISTRY            // Docker registry
+MIRROR              // Docker registry mirror
+INSECURE            // Docker daemon enable insecure registries
+STORAGE_DRIVER      // Docker daemon storage driver
+STORAGE_PATH        // Docker daemon storage path
+DAEMON_OFF          // Docker daemon is disabled (already running)
+DEBUG               // Docker daemon started in debug mode
+BIP                 // Docker daemon network bridge IP address
+CUSTOM_DNS          // Docker daemon dns server
+CUSTOM_DNS_SEARCH   // Docker daemon dns search domain
+MTU                 // Docker daemon mtu setting
+IPV6                // Docker daemon IPv6 networking
+EXPERIMENTAL        // Docker daemon enable experimental mode
 ```
 
 # Building
