@@ -5,6 +5,7 @@ FROM docker:19.03-dind
 
 RUN apk --update add \
     curl
+
 # required to install scanning
 RUN mkdir -p ~/.docker/cli-plugins && \
     curl https://github.com/docker/scan-cli-plugin/releases/latest/download/docker-scan_linux_amd64 -L -s -S -o ~/.docker/cli-plugins/docker-scan &&\

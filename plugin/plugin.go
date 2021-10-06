@@ -6,6 +6,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,6 +19,7 @@ import (
 const dockerExe = "/usr/local/bin/docker"
 const dockerdExe = "/usr/local/bin/dockerd"
 const dockerHome = "/root/.docker/"
+const bashExe = "/bin/sh"
 
 type (
 	// Login defines Docker  parameters.
@@ -44,6 +46,157 @@ type (
 		IPv6           bool     `envconfig:"PLUGIN_IPV6"`                                           // Docker daemon IPv6 networking
 		Experimental   bool     `envconfig:"PLUGIN_EXPERIMENTAL"`                                   // Docker daemon enable experimental mode
 	}
+
+	scanResults struct {
+		Vulnerabilities []interface{} `json:"vulnerabilities"`
+		Ok              bool          `json:"ok"`
+		DependencyCount int           `json:"dependencyCount"`
+		Org             string        `json:"org"`
+		Policy          string        `json:"policy"`
+		IsPrivate       bool          `json:"isPrivate"`
+		LicensesPolicy  struct {
+			Severities struct {
+			} `json:"severities"`
+			OrgLicenseRules struct {
+				AGPL10 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"AGPL-1.0"`
+				AGPL30 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"AGPL-3.0"`
+				Artistic10 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"Artistic-1.0"`
+				Artistic20 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"Artistic-2.0"`
+				CDDL10 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"CDDL-1.0"`
+				CPOL102 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"CPOL-1.02"`
+				EPL10 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"EPL-1.0"`
+				GPL20 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"GPL-2.0"`
+				GPL30 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"GPL-3.0"`
+				LGPL20 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"LGPL-2.0"`
+				LGPL21 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"LGPL-2.1"`
+				LGPL30 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"LGPL-3.0"`
+				MPL11 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"MPL-1.1"`
+				MPL20 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"MPL-2.0"`
+				MSRL struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"MS-RL"`
+				SimPL20 struct {
+					LicenseType  string `json:"licenseType"`
+					Severity     string `json:"severity"`
+					Instructions string `json:"instructions"`
+				} `json:"SimPL-2.0"`
+			} `json:"orgLicenseRules"`
+		} `json:"licensesPolicy"`
+		PackageManager string      `json:"packageManager"`
+		IgnoreSettings interface{} `json:"ignoreSettings"`
+		Docker         struct {
+			BaseImageRemediation struct {
+				Code   string `json:"code"`
+				Advice []struct {
+					Message string `json:"message"`
+					Bold    bool   `json:"bold"`
+					Color   string `json:"color"`
+				} `json:"advice"`
+			} `json:"baseImageRemediation"`
+		} `json:"docker"`
+		Summary          string `json:"summary"`
+		FilesystemPolicy bool   `json:"filesystemPolicy"`
+		UniqueCount      int    `json:"uniqueCount"`
+		ProjectName      string `json:"projectName"`
+		Platform         string `json:"platform"`
+		ScanResult       struct {
+			Facts []struct {
+				Type string `json:"type"`
+				Data struct {
+					SchemaVersion string `json:"schemaVersion"`
+					PkgManager    struct {
+						Name         string `json:"name"`
+						Repositories []struct {
+							Alias string `json:"alias"`
+						} `json:"repositories"`
+					} `json:"pkgManager"`
+					Pkgs []struct {
+						ID   string `json:"id"`
+						Info struct {
+							Name    string `json:"name"`
+							Version string `json:"version"`
+						} `json:"info"`
+					} `json:"pkgs"`
+					Graph struct {
+						RootNodeID string `json:"rootNodeId"`
+						Nodes      []struct {
+							NodeID string        `json:"nodeId"`
+							PkgID  string        `json:"pkgId"`
+							Deps   []interface{} `json:"deps"`
+						} `json:"nodes"`
+					} `json:"graph"`
+				} `json:"data"`
+			} `json:"facts"`
+			Target struct {
+				Image string `json:"image"`
+			} `json:"target"`
+			Identity struct {
+				Type string `json:"type"`
+				Args struct {
+					Platform string `json:"platform"`
+				} `json:"args"`
+			} `json:"identity"`
+		} `json:"scanResult"`
+		Path string `json:"path"`
+	}
 )
 
 // Args provides plugin execution arguments.
@@ -64,14 +217,19 @@ func Exec(ctx context.Context, args Args) error {
 		startDaemon(args.Daemon)
 	}
 
+	fmt.Printf("Current Unix Time: %v\n", time.Now().Unix())
+	var results scanResults
 	severityLevel := strings.ToLower(args.Severity)
 	switch severityLevel {
-	case "high",
+	case "critical",
+		"high",
 		"medium",
 		"low":
 		fmt.Printf("Severity level set at %s\n", severityLevel)
+	case "":
+		fmt.Printf("Severity level not set.")
 	default:
-		return fmt.Errorf("invalid severity level input, must be high, medium or low")
+		return fmt.Errorf("invalid severity level input, must be critical, high, medium or low")
 	}
 
 	// poll the docker daemon until it is started. This ensures the daemon is
@@ -109,7 +267,7 @@ func Exec(ctx context.Context, args Args) error {
 		path := filepath.Join(dockerHome, "config.json")
 		err := ioutil.WriteFile(path, []byte(args.Login.Config), 0600)
 		if err != nil {
-			return fmt.Errorf("Error writing config.json: %s", err)
+			return fmt.Errorf("error writing config.json: %s", err)
 		}
 	}
 
@@ -121,7 +279,7 @@ func Exec(ctx context.Context, args Args) error {
 			out := string(raw)
 			out = strings.Replace(out, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.", "", -1)
 			fmt.Println(out)
-			return fmt.Errorf("Error authenticating: exit status 1")
+			return fmt.Errorf("error authenticating: exit status 1")
 		}
 	}
 
@@ -132,6 +290,7 @@ func Exec(ctx context.Context, args Args) error {
 		fmt.Println("Snyk credentials not provided. Unauthenticated mode only allows 10 scans a month")
 	}
 	cmds = append(cmds, scan(args.Image, args.Dockerfile, severityLevel))
+	cmds = append(cmds, scanResultsToFile(args.Image, args.Dockerfile, severityLevel))
 	// execute all commands in batch mode.
 	for _, cmd := range cmds {
 		cmd.Stdout = os.Stdout
@@ -139,10 +298,21 @@ func Exec(ctx context.Context, args Args) error {
 		trace(cmd)
 
 		err := cmd.Run()
+
 		if err != nil {
 			fmt.Println(err)
-			return err
+			//return err
 		}
+	}
+
+	data, err := os.ReadFile("/tmp/output.json")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = json.Unmarshal(data, &results)
+	if err != nil {
+		fmt.Printf(err.Error())
 	}
 
 	return nil
@@ -175,14 +345,33 @@ func commandInfo() *exec.Cmd {
 	return exec.Command(dockerExe, "info")
 }
 
+func scanResultsToFile(image, dockerfile, severityLevel string) *exec.Cmd {
+	args := []string{
+		"docker scan --json",
+	}
+	if severityLevel != "" {
+		args = append(args, "--severity="+severityLevel)
+	}
+	args = append(args,
+		image,
+		"--file",
+		dockerfile,
+		"> /tmp/output.json")
+	return exec.Command(bashExe, "-c", strings.Join(args," "))
+}
+
 func scan(image, dockerfile, severityLevel string) *exec.Cmd {
-	return exec.Command(dockerExe, "scan",
-		"--json",
-		"--severity=" + severityLevel,
+	args := []string{
+		"scan"}
+	if severityLevel != "" {
+		args = append(args, "--severity="+severityLevel)
+	}
+	args = append(args,
 		image,
 		"--file",
 		dockerfile,
 		"--accept-license")
+	return exec.Command(dockerExe, args...)
 }
 
 func snykLogin(token string) *exec.Cmd {
