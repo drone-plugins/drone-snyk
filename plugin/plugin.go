@@ -357,7 +357,8 @@ func scanResultsToFile(image, dockerfile, severityLevel string) *exec.Cmd {
 		"--file",
 		dockerfile,
 		"> /tmp/output.json")
-	return exec.Command(bashExe, "-c", strings.Join(args," "))
+
+	return exec.Command(bashExe, "-c", strings.Join(args, " "))
 }
 
 func scan(image, dockerfile, severityLevel string) *exec.Cmd {
