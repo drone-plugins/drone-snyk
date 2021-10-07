@@ -9,6 +9,9 @@ The following settings changes this plugin's behavior.
 * dockerfile uri to dockerfile in repo.
 * image the name of the image you wish to scan.
 * snyk (optional) auth token for snyk (without this you will get 10 scans a month)
+* severity threshold can be set the limit the results return, low, medium, high & critical are acceptable inputs
+
+> Either a docker username/passport or Snyk token can be used for authentication
 
 > Notice: Be aware that the Docker plugin currently requires privileged capabilities, otherwise the integrated Docker daemon is not able to start.
 
@@ -36,8 +39,8 @@ steps:
 # Additional Settings
 ```text
 REGISTRY // docker registry address
-USERNAME // Docker registry username - required
-PASSWORD // Docker registry password - required
+USERNAME // Docker registry username 
+PASSWORD // Docker registry password 
 EMAIL    // Docker registry email
 CONFIG   // Docker Auth Config
 
@@ -75,7 +78,7 @@ docker build -t drone-plugins/drone-snyk -f docker/Dockerfile .
 Execute the plugin from your current working directory:
 
 ```text
-docker run --rm -e PLUGIN_IMAGE=image -e PLUGIN_DOCKERFILE=dockerfile -e PLUGIN_USERNAME=username -e PLUGIN_PASSWORD=password \
+docker run --rm -e PLUGIN_IMAGE=image -e PLUGIN_DOCKERFILE=dockerfile -e PLUGIN_USERNAME=username -e PLUGIN_PASSWORD=password --privileged=true  \
   -e DRONE_COMMIT_SHA=8f51ad7884c5eb69c11d260a31da7a745e6b78e2 \
   -e DRONE_COMMIT_BRANCH=master \
   -e DRONE_BUILD_NUMBER=43 \
