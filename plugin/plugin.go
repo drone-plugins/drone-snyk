@@ -207,12 +207,19 @@ func Exec(ctx context.Context, args Args) error {
 		if err != nil {
 			// required so it doesn't exit on scan file stage
 			if !isCommandScanFile(cmd.Args) {
-				fmt.Println(err)
-				//return err
+				return err
+			} else {
+				err = MapSummaryResults(results)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
+}
 
+func MapSummaryResults(results ScanResults) error {
 	data, err := os.ReadFile("/tmp/output.json")
 	if err != nil {
 		fmt.Println(err)
@@ -245,8 +252,6 @@ func Exec(ctx context.Context, args Args) error {
 			summary.Issues.Low.Issue = append(summary.Issues.Low.Issue, Issue{Title: v.Title, Name: v.Name})
 		}
 	}
-	r, err := json.Marshal(summary)
-	fmt.Println(string(r))
 	return nil
 }
 
