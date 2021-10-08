@@ -60,12 +60,12 @@ type (
 
 	ScanResults struct {
 		Vulnerabilities []struct {
-			PackageName          string `json:"packageName"`
-			Severity             string `json:"severity"`
-			SeverityWithCritical string `json:"severityWithCritical"`
-			Title                string `json:"title"`
-			Description          string `json:"description"`
-			Name                 string `json:"name"`
+			PackageName          string   `json:"packageName"`
+			Severity             string   `json:"severity"`
+			SeverityWithCritical string   `json:"severityWithCritical"`
+			Title                string   `json:"title"`
+			Description          string   `json:"description"`
+			Name                 []string `json:"name"`
 		} `json:"vulnerabilities"`
 		Ok              bool       `json:"ok"`
 		DependencyCount int        `json:"dependencyCount"`
@@ -78,9 +78,8 @@ type (
 	}
 
 	Issue struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Name        string `json:"name"`
+		Title string   `json:"title"`
+		Name  []string `json:"name"`
 	}
 
 	Issues struct {
@@ -94,7 +93,6 @@ type (
 			High     Issues `json:"high"`
 			Medium   Issues `json:"medium"`
 			Low      Issues `json:"low"`
-			Total    Issues `json:"total"`
 		}
 		Docker      ScanDocker `json:"docker"`
 		Summary     string     `json:"summary"`
@@ -210,7 +208,7 @@ func Exec(ctx context.Context, args Args) error {
 			// required so it doesn't exit on scan file stage
 			if !isCommandScanFile(cmd.Args) {
 				fmt.Println(err)
-				return err
+				//return err
 			}
 		}
 	}
@@ -235,18 +233,20 @@ func Exec(ctx context.Context, args Args) error {
 		switch v.Severity {
 		case "critical":
 			summary.Issues.Critical.TotalCount = summary.Issues.Critical.TotalCount + 1
-			summary.Issues.Critical.Issue = append(summary.Issues.Critical.Issue, Issue{Title: v.Title, Description: v.Description, Name: v.Name})
+			summary.Issues.Critical.Issue = append(summary.Issues.Critical.Issue, Issue{Title: v.Title, Name: v.Name})
 		case "high":
 			summary.Issues.High.TotalCount = summary.Issues.High.TotalCount + 1
-			summary.Issues.High.Issue = append(summary.Issues.High.Issue, Issue{Title: v.Title, Description: v.Description, Name: v.Name})
+			summary.Issues.High.Issue = append(summary.Issues.High.Issue, Issue{Title: v.Title, Name: v.Name})
 		case "medium":
 			summary.Issues.Medium.TotalCount = summary.Issues.Medium.TotalCount + 1
-			summary.Issues.Medium.Issue = append(summary.Issues.Medium.Issue, Issue{Title: v.Title, Description: v.Description, Name: v.Name})
+			summary.Issues.Medium.Issue = append(summary.Issues.Medium.Issue, Issue{Title: v.Title, Name: v.Name})
 		case "low":
 			summary.Issues.Low.TotalCount = summary.Issues.Low.TotalCount + 1
-			summary.Issues.Low.Issue = append(summary.Issues.Low.Issue, Issue{Title: v.Title, Description: v.Description, Name: v.Name})
+			summary.Issues.Low.Issue = append(summary.Issues.Low.Issue, Issue{Title: v.Title, Name: v.Name})
 		}
 	}
+	r, err := json.Marshal(summary)
+	fmt.Println(string(r))
 	return nil
 }
 
