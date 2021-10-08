@@ -60,12 +60,9 @@ type (
 
 	ScanResults struct {
 		Vulnerabilities []struct {
-			PackageName          string   `json:"packageName"`
-			Severity             string   `json:"severity"`
-			SeverityWithCritical string   `json:"severityWithCritical"`
-			Title                string   `json:"title"`
-			Description          string   `json:"description"`
-			Name                 []string `json:"name"`
+			PackageName          string `json:"packageName"`
+			Severity             string `json:"severity"`
+			SeverityWithCritical string `json:"severityWithCritical"`
 		} `json:"vulnerabilities"`
 		Ok              bool       `json:"ok"`
 		DependencyCount int        `json:"dependencyCount"`
@@ -77,22 +74,12 @@ type (
 		Path            string     `json:"path"`
 	}
 
-	Issue struct {
-		Title string   `json:"title"`
-		Name  []string `json:"name"`
-	}
-
-	Issues struct {
-		TotalCount int64   `json:"totalCount"`
-		Issue      []Issue `json:"issue"`
-	}
-
 	ScanSummary struct {
 		Issues struct {
-			Critical Issues `json:"critical"`
-			High     Issues `json:"high"`
-			Medium   Issues `json:"medium"`
-			Low      Issues `json:"low"`
+			Critical int64 `json:"critical"`
+			High     int64 `json:"high"`
+			Medium   int64 `json:"medium"`
+			Low      int64 `json:"low"`
 		}
 		Docker      ScanDocker `json:"docker"`
 		Summary     string     `json:"summary"`
@@ -239,17 +226,13 @@ func MapSummaryResults(results ScanResults) error {
 	for _, v := range results.Vulnerabilities {
 		switch v.Severity {
 		case "critical":
-			summary.Issues.Critical.TotalCount = summary.Issues.Critical.TotalCount + 1
-			summary.Issues.Critical.Issue = append(summary.Issues.Critical.Issue, Issue{Title: v.Title, Name: v.Name})
+			summary.Issues.Critical = summary.Issues.Critical + 1
 		case "high":
-			summary.Issues.High.TotalCount = summary.Issues.High.TotalCount + 1
-			summary.Issues.High.Issue = append(summary.Issues.High.Issue, Issue{Title: v.Title, Name: v.Name})
+			summary.Issues.High = summary.Issues.High + 1
 		case "medium":
-			summary.Issues.Medium.TotalCount = summary.Issues.Medium.TotalCount + 1
-			summary.Issues.Medium.Issue = append(summary.Issues.Medium.Issue, Issue{Title: v.Title, Name: v.Name})
+			summary.Issues.Medium = summary.Issues.Medium + 1
 		case "low":
-			summary.Issues.Low.TotalCount = summary.Issues.Low.TotalCount + 1
-			summary.Issues.Low.Issue = append(summary.Issues.Low.Issue, Issue{Title: v.Title, Name: v.Name})
+			summary.Issues.Low = summary.Issues.Low + 1
 		}
 	}
 	return nil
