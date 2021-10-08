@@ -15,7 +15,24 @@ The following settings changes this plugin's behavior.
 
 > Notice: Be aware that the Docker plugin currently requires privileged capabilities, otherwise the integrated Docker daemon is not able to start.
 
-Below is an example `.drone.yml` that uses this plugin.
+Below is an example `.drone.yml` that uses this plugin using snyk auth
+
+```yaml
+kind: pipeline
+name: default
+
+steps:
+- name: scan
+  image: drone-plugins/drone-snyk
+  pull: if-not-exists
+  privileged: true
+  settings:
+      dockerfile: link to dockerfile in repo
+      image: image name
+      snyk:
+        from_secret: snyk
+```
+Below is an example `.drone.yml` that uses this plugin using docker auth
 
 ```yaml
 kind: pipeline
@@ -33,8 +50,6 @@ steps:
         from_secret: username
       password:
         from_secret: password
-      snyk:
-        from_secret: snyk
 ```
 # Additional Settings
 ```text

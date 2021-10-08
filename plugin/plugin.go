@@ -235,6 +235,8 @@ func MapSummaryResults(results ScanResults) error {
 			summary.Issues.Low = summary.Issues.Low + 1
 		}
 	}
+	r, err := json.Marshal(summary)
+	fmt.Println(string(r))
 	return nil
 }
 
