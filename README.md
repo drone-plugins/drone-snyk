@@ -29,8 +29,9 @@ steps:
   settings:
       dockerfile: link to dockerfile in repo
       image: image name
-      snyk:
+      snyk_token:
         from_secret: snyk
+      fail_on_issues: false // step won't fail if set to false
 ```
 Below is an example `.drone.yml` that uses this plugin using docker auth
 
