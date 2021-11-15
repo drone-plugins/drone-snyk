@@ -6,6 +6,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/drone/drone-go/drone"
 )
 
 const dockerExe = "/usr/local/bin/docker"
@@ -72,6 +75,13 @@ type (
 		ProjectName     string     `json:"projectName"`
 		Platform        string     `json:"platform"`
 		Path            string     `json:"path"`
+		Target          struct {
+			Image string `json:"image"`
+		} `json:"target"`
+		Data struct {
+			OrgOpencontainersImageCreated  time.Time `json:"org.opencontainers.image.created"`
+			OrgOpencontainersImageRevision string    `json:"org.opencontainers.image.revision"`
+		} `json:"data,omitempty"`
 	}
 
 	ScanSummary struct {
@@ -90,6 +100,13 @@ type (
 	}
 )
 
+const Esc = "\u001B"
+
+var (
+	prefix = Esc + "]1338;"
+	suffix = Esc + "]0m"
+)
+
 // Args provides plugin execution arguments.
 type Args struct {
 	Pipeline
@@ -98,8 +115,10 @@ type Args struct {
 	Level             string `envconfig:"PLUGIN_LOG_LEVEL"`
 	Dockerfile        string `envconfig:"PLUGIN_DOCKERFILE"`
 	Image             string `envconfig:"PLUGIN_IMAGE" required:"true"`
-	AuthToken         string `envconfig:"PLUGIN_SNYK"`
+	SnykToken         string `envconfig:"PLUGIN_SNYK_TOKEN"`
 	SeverityThreshold string `envconfig:"PLUGIN_SEVERITY_THRESHOLD"`
+	FailOnIssues      bool   `envconfig:"PLUGIN_FAIL_ON_ISSUES"`
+	CardFilePath      string `envconfig:"DRONE_CARD_PATH"`
 }
 
 // Exec executes the plugin.
@@ -109,6 +128,7 @@ func Exec(ctx context.Context, args Args) error {
 	}
 
 	fmt.Printf("Current Unix Time: %v\n", time.Now().Unix())
+
 	var results ScanResults
 	severityLevel := strings.ToLower(args.SeverityThreshold)
 	switch severityLevel {
@@ -175,8 +195,8 @@ func Exec(ctx context.Context, args Args) error {
 	}
 
 	var cmds []*exec.Cmd
-	if args.AuthToken != "" {
-		cmds = append(cmds, snykLogin(args.AuthToken))
+	if args.SnykToken != "" {
+		cmds = append(cmds, snykLogin(args.SnykToken))
 	} else {
 		fmt.Println("Snyk credentials not provided. Unauthenticated mode only allows 10 scans a month")
 	}
@@ -194,9 +214,11 @@ func Exec(ctx context.Context, args Args) error {
 		if err != nil {
 			// required so it doesn't exit on scan file stage
 			if !isCommandScanFile(cmd.Args) {
-				return err
+				if args.FailOnIssues {
+					return err
+				}
 			} else {
-				err = MapSummaryResults(results)
+				err = MapSummaryResults(results, args)
 				if err != nil {
 					return err
 				}
@@ -206,7 +228,10 @@ func Exec(ctx context.Context, args Args) error {
 	return nil
 }
 
-func MapSummaryResults(results ScanResults) error {
+func MapSummaryResults(results ScanResults, args Args) error {
+	card := drone.CardInput{
+		Schema: "https://eoinmcafee00.github.io/card-templates/snyk.json",
+	}
 	data, err := os.ReadFile("/tmp/output.json")
 	if err != nil {
 		fmt.Println(err)
@@ -236,7 +261,22 @@ func MapSummaryResults(results ScanResults) error {
 		}
 	}
 	r, err := json.Marshal(summary)
-	fmt.Println(string(r))
+	card.Data = r
+	file, err := json.Marshal(card)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// support both writing to file location & encoded to logs
+	path := args.CardFilePath
+	switch {
+	case path == "/dev/stdout":
+		// !important - new line required otherwise TrimSuffix in runner won't work
+		sEnc := fmt.Sprintf("%s%s%s%s", prefix, base64.StdEncoding.EncodeToString(file), suffix, "\n")
+		err = ioutil.WriteFile("/dev/stdout", []byte(sEnc), 0644)
+	case path != "":
+		ioutil.WriteFile(path, file, 0644)
+	}
 	return nil
 }
 
