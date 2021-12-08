@@ -230,7 +230,7 @@ func Exec(ctx context.Context, args Args) error {
 
 func MapSummaryResults(results ScanResults, args Args) error {
 	card := drone.CardInput{
-		Schema: "https://eoinmcafee00.github.io/card-templates/snyk.json",
+		Schema: "https://harness.github.io/card-templates/snyk.json",
 	}
 	data, err := os.ReadFile("/tmp/output.json")
 	if err != nil {
