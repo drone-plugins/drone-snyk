@@ -56,32 +56,18 @@ type (
 			Code   string `json:"code"`
 			Advice []struct {
 				Message string `json:"message"`
-				Bold    bool   `json:"bold,omitempty"`
+				Bold    bool   `json:"bold"`
+				Color   string `json:"color,omitempty"`
 			} `json:"advice"`
 		} `json:"baseImageRemediation"`
 	}
 
 	ScanResults struct {
 		Vulnerabilities []struct {
-			PackageName          string `json:"packageName"`
-			Severity             string `json:"severity"`
-			SeverityWithCritical string `json:"severityWithCritical"`
-		} `json:"vulnerabilities"`
-		Ok              bool       `json:"ok"`
-		DependencyCount int        `json:"dependencyCount"`
-		Docker          ScanDocker `json:"docker"`
-		Summary         string     `json:"summary"`
-		UniqueCount     int        `json:"uniqueCount"`
-		ProjectName     string     `json:"projectName"`
-		Platform        string     `json:"platform"`
-		Path            string     `json:"path"`
-		Target          struct {
-			Image string `json:"image"`
-		} `json:"target"`
-		Data struct {
-			OrgOpencontainersImageCreated  time.Time `json:"org.opencontainers.image.created"`
-			OrgOpencontainersImageRevision string    `json:"org.opencontainers.image.revision"`
-		} `json:"data,omitempty"`
+			PackageName          string `json:"packageName,omitempty"`
+			Severity             string `json:"severity,omitempty"`
+			SeverityWithCritical string `json:"severityWithCritical,omitempty"`
+		} `json:"vulnerabilities,omitempty"`
 	}
 
 	ScanSummary struct {
@@ -91,11 +77,11 @@ type (
 			Medium   int64 `json:"medium"`
 			Low      int64 `json:"low"`
 		}
-		Docker      ScanDocker `json:"docker"`
+		Docker      ScanDocker `json:"docker,omitempty"`
 		Summary     string     `json:"summary"`
 		UniqueCount int        `json:"uniqueCount"`
 		ProjectName string     `json:"projectName"`
-		Platform    string     `json:"platform"`
+		Platform    string     `json:"platform,omitempty"`
 		Path        string     `json:"path"`
 	}
 )
@@ -115,7 +101,7 @@ type Args struct {
 	Level             string `envconfig:"PLUGIN_LOG_LEVEL"`
 	Dockerfile        string `envconfig:"PLUGIN_DOCKERFILE"`
 	Image             string `envconfig:"PLUGIN_IMAGE" required:"true"`
-	SnykToken         string `envconfig:"PLUGIN_SNYK_TOKEN"`
+	SnykToken         string `envconfig:"PLUGIN_SNYK"`
 	SeverityThreshold string `envconfig:"PLUGIN_SEVERITY_THRESHOLD"`
 	FailOnIssues      bool   `envconfig:"PLUGIN_FAIL_ON_ISSUES"`
 	CardFilePath      string `envconfig:"DRONE_CARD_PATH"`
@@ -129,7 +115,6 @@ func Exec(ctx context.Context, args Args) error {
 
 	fmt.Printf("Current Unix Time: %v\n", time.Now().Unix())
 
-	var results ScanResults
 	severityLevel := strings.ToLower(args.SeverityThreshold)
 	switch severityLevel {
 	case "critical",
@@ -195,13 +180,23 @@ func Exec(ctx context.Context, args Args) error {
 	}
 
 	var cmds []*exec.Cmd
-	if args.SnykToken != "" {
-		cmds = append(cmds, snykLogin(args.SnykToken))
-	} else {
-		fmt.Println("Snyk credentials not provided. Unauthenticated mode only allows 10 scans a month")
+
+	loginCmd := snykLogin(args.SnykToken)
+	raw, err := loginCmd.CombinedOutput()
+	if err != nil {
+		out := string(raw)
+		out = strings.Replace(out, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.", "", -1)
+		fmt.Println(out)
+		return fmt.Errorf("error authenticating: exit status 1")
 	}
 
-	cmds = append(cmds, scanResultsToFile(args.Image, args.Dockerfile, severityLevel))
+	scanCmd := scanResultsToFile(args.Image, args.Dockerfile, severityLevel)
+	scanCmd.CombinedOutput()
+	err = MapSummaryResults(args)
+	if err != nil {
+		return err
+	}
+
 	cmds = append(cmds, scan(args.Image, args.Dockerfile, severityLevel))
 	// execute all commands in batch mode.
 	for _, cmd := range cmds {
@@ -209,26 +204,16 @@ func Exec(ctx context.Context, args Args) error {
 		cmd.Stderr = os.Stderr
 		trace(cmd)
 
-		err := cmd.Run()
-
-		if err != nil {
-			// required so it doesn't exit on scan file stage
-			if !isCommandScanFile(cmd.Args) {
-				if args.FailOnIssues {
-					return err
-				}
-			} else {
-				err = MapSummaryResults(results, args)
-				if err != nil {
-					return err
-				}
-			}
+		err = cmd.Run()
+		if args.FailOnIssues {
+			return err
 		}
 	}
 	return nil
 }
 
-func MapSummaryResults(results ScanResults, args Args) error {
+func MapSummaryResults(args Args) error {
+	var results ScanResults
 	card := drone.CardInput{
 		Schema: "https://harness.github.io/card-templates/snyk.json",
 	}
@@ -238,15 +223,14 @@ func MapSummaryResults(results ScanResults, args Args) error {
 		return err
 	}
 	err = json.Unmarshal(data, &results)
-
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err)
 	}
 
 	var summary ScanSummary
 	err = json.Unmarshal(data, &summary)
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err)
 	}
 	for _, v := range results.Vulnerabilities {
 		switch v.Severity {
@@ -346,10 +330,6 @@ func snykLogin(token string) *exec.Cmd {
 // tag so that it can be extracted and displayed in the logs.
 func trace(cmd *exec.Cmd) {
 	fmt.Fprintf(os.Stdout, "+ %s\n", strings.Join(cmd.Args, " "))
-}
-
-func isCommandScanFile(args []string) bool {
-	return args[0] == "/bin/sh"
 }
 
 // helper function to create the docker daemon command.

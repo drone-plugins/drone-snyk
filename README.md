@@ -29,7 +29,7 @@ steps:
   settings:
       dockerfile: link to dockerfile in repo
       image: image name
-      snyk_token:
+      snyk:
         from_secret: snyk
       fail_on_issues: false // step won't fail if set to false
 ```
