@@ -42,10 +42,9 @@ func (args Args) writeCard() error {
 	}
 
 	sum, err := json.Marshal(summary)
-	cardData, _ := json.Marshal(sum)
 	card := drone.CardInput{
 		Schema: "https://drone-plugins.github.io/drone-snyk/card.json",
-		Data:   cardData,
+		Data:   sum,
 	}
 
 	writeCard(args.CardFilePath, &card)
