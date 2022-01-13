@@ -1,0 +1,144 @@
+{
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "Image",
+      "url": "https://snyk.io/wp-content/themes/snyk_v2_etyhadar/dist/images/snyk-logo-patch-new.svg"
+    },
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "items": [
+            {
+              "type": "FactSet",
+              "spacing": "Medium",
+              "facts": [
+                {
+                  "title": "Image:",
+                  "value": "${$root.path}"
+                },
+                {
+                  "title": "Total:",
+                  "value": "${$root.summary}"
+                },
+                {
+                  "title": "Unique:",
+                  "value": "${formatNumber($root.uniqueCount, 0)}"
+                }
+              ]
+            },
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "weight": "Lighter",
+                      "text": "Critical",
+                      "wrap": true,
+                      "size": "Small",
+                      "isSubtle": true,
+                      "spacing": "Medium"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "wrap": true,
+                      "size": "Small",
+                      "spacing": "Small",
+                      "$data": "${$root.Issues.critical}",
+                      "text": "${formatNumber($root.Issues.critical, 0)}"
+                    }
+                  ],
+                  "separator": true,
+                  "width": "auto"
+                },
+                {
+                  "type": "Column",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "weight": "Lighter",
+                      "text": "High",
+                      "wrap": true,
+                      "size": "Small",
+                      "isSubtle": true
+                    },
+                    {
+                      "type": "TextBlock",
+                      "spacing": "Small",
+                      "wrap": true,
+                      "size": "Small",
+                      "$data": "${$root.Issues.high}",
+                      "text": "${formatNumber($root.Issues.high, 0)}"
+                    }
+                  ],
+                  "width": "auto",
+                  "separator": true,
+                  "spacing": "Medium"
+                },
+                {
+                  "type": "Column",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "weight": "Lighter",
+                      "text": "Medium",
+                      "wrap": true,
+                      "size": "Small",
+                      "isSubtle": true
+                    },
+                    {
+                      "type": "TextBlock",
+                      "spacing": "Small",
+                      "wrap": true,
+                      "size": "Small",
+                      "$data": "${$root.Issues.medium}",
+                      "text": "${formatNumber($root.Issues.medium, 0)}"
+                    }
+                  ],
+                  "width": "auto",
+                  "separator": true,
+                  "spacing": "Medium"
+                },
+                {
+                  "type": "Column",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "weight": "Lighter",
+                      "wrap": true,
+                      "size": "Small",
+                      "isSubtle": true,
+                      "text": "Low"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "spacing": "Small",
+                      "wrap": true,
+                      "size": "Small",
+                      "$data": "${$root.Issues.low}",
+                      "text": "${formatNumber($root.Issues.low, 0)}"
+                    }
+                  ],
+                  "width": "auto",
+                  "separator": true,
+                  "spacing": "Medium",
+                  "$data": "${$root.Issues.low}"
+                }
+              ],
+              "style": "default",
+              "$data": "${$root.Issues.low}"
+            }
+          ],
+          "width": "stretch"
+        }
+      ]
+    }
+  ],
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5"
+}

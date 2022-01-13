@@ -6,8 +6,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,14 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/drone/drone-go/drone"
 )
 
 const dockerExe = "/usr/local/bin/docker"
 const dockerdExe = "/usr/local/bin/dockerd"
 const dockerHome = "/root/.docker/"
-const bashExe = "/bin/sh"
 
 type (
 	// Login defines Docker  parameters.
@@ -86,13 +81,6 @@ type (
 	}
 )
 
-const Esc = "\u001B"
-
-var (
-	prefix = Esc + "]1338;"
-	suffix = Esc + "]0m"
-)
-
 // Args provides plugin execution arguments.
 type Args struct {
 	Pipeline
@@ -115,17 +103,9 @@ func Exec(ctx context.Context, args Args) error {
 
 	fmt.Printf("Current Unix Time: %v\n", time.Now().Unix())
 
-	severityLevel := strings.ToLower(args.SeverityThreshold)
-	switch severityLevel {
-	case "critical",
-		"high",
-		"medium",
-		"low":
-		fmt.Printf("Severity Threshold level set at %s\n", severityLevel)
-	case "":
-		fmt.Printf("Severity Threshold level not set.")
-	default:
-		return fmt.Errorf("invalid severity level input, must be critical, high, medium or low")
+	severityLevel, err2 := checkSeverityLevel(args)
+	if err2 != nil {
+		return err2
 	}
 
 	// poll the docker daemon until it is started. This ensures the daemon is
@@ -190,14 +170,7 @@ func Exec(ctx context.Context, args Args) error {
 		return fmt.Errorf("error authenticating: exit status 1")
 	}
 
-	scanCmd := scanResultsToFile(args.Image, args.Dockerfile, severityLevel)
-	scanCmd.CombinedOutput()
-	err = MapSummaryResults(args)
-	if err != nil {
-		return err
-	}
-
-	cmds = append(cmds, scan(args.Image, args.Dockerfile, severityLevel))
+	cmds = append(cmds, scan(args.Image, args.Dockerfile, severityLevel, false))
 	// execute all commands in batch mode.
 	for _, cmd := range cmds {
 		cmd.Stdout = os.Stdout
@@ -209,59 +182,27 @@ func Exec(ctx context.Context, args Args) error {
 			return err
 		}
 	}
+
+	if err := args.writeCard(); err != nil {
+		fmt.Printf("Could not create adaptive card. %s\n", err)
+	}
 	return nil
 }
 
-func MapSummaryResults(args Args) error {
-	var results ScanResults
-	card := drone.CardInput{
-		Schema: "https://harness.github.io/card-templates/snyk.json",
+func checkSeverityLevel(args Args) (string, error) {
+	severityLevel := strings.ToLower(args.SeverityThreshold)
+	switch severityLevel {
+	case "critical",
+		"high",
+		"medium",
+		"low":
+		fmt.Printf("Severity Threshold level set at %s\n", severityLevel)
+	case "":
+		fmt.Printf("Severity Threshold level not set.")
+	default:
+		return "", fmt.Errorf("invalid severity level input, must be critical, high, medium or low")
 	}
-	data, err := os.ReadFile("/tmp/output.json")
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	err = json.Unmarshal(data, &results)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var summary ScanSummary
-	err = json.Unmarshal(data, &summary)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for _, v := range results.Vulnerabilities {
-		switch v.Severity {
-		case "critical":
-			summary.Issues.Critical = summary.Issues.Critical + 1
-		case "high":
-			summary.Issues.High = summary.Issues.High + 1
-		case "medium":
-			summary.Issues.Medium = summary.Issues.Medium + 1
-		case "low":
-			summary.Issues.Low = summary.Issues.Low + 1
-		}
-	}
-	r, err := json.Marshal(summary)
-	card.Data = r
-	file, err := json.Marshal(card)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	// support both writing to file location & encoded to logs
-	path := args.CardFilePath
-	switch {
-	case path == "/dev/stdout":
-		// !important - new line required otherwise TrimSuffix in runner won't work
-		sEnc := fmt.Sprintf("%s%s%s%s", prefix, base64.StdEncoding.EncodeToString(file), suffix, "\n")
-		err = ioutil.WriteFile("/dev/stdout", []byte(sEnc), 0644)
-	case path != "":
-		ioutil.WriteFile(path, file, 0644)
-	}
-	return nil
+	return severityLevel, nil
 }
 
 func commandLogin(login Login) *exec.Cmd {
@@ -291,24 +232,12 @@ func commandInfo() *exec.Cmd {
 	return exec.Command(dockerExe, "info")
 }
 
-func scanResultsToFile(image, dockerfile, severityLevel string) *exec.Cmd {
-	args := []string{
-		"docker scan --json --group-issues",
-	}
-	if severityLevel != "" {
-		args = append(args, "--severity="+severityLevel)
-	}
-	args = append(args, image)
-	if dockerfile != "" {
-		args = append(args, "--file="+dockerfile)
-	}
-	args = append(args, "> /tmp/output.json")
-
-	return exec.Command(bashExe, "-c", strings.Join(args, " "))
-}
-
-func scan(image, dockerfile, severityLevel string) *exec.Cmd {
+func scan(image, dockerfile, severityLevel string, jsonFormat bool) *exec.Cmd {
 	args := []string{"scan"}
+	if jsonFormat {
+		args = append(args, "--json")
+		args = append(args, "--group-issues")
+	}
 	if severityLevel != "" {
 		args = append(args, "--severity="+severityLevel)
 	}
