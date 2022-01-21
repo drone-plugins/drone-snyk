@@ -14,8 +14,10 @@ import (
 func (args Args) writeCard() error {
 	cmd := scan(args.Image, args.Dockerfile, strings.ToLower(args.SeverityThreshold), true)
 	data, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
+	if args.FailOnIssues {
+		if err != nil {
+			return err
+		}
 	}
 
 	out := ScanResults{}
