@@ -17,5 +17,4 @@ ENV DOCKER_HOST=unix:///var/run/docker.sock
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ADD release/linux/amd64/plugin /bin/
-
 ENTRYPOINT ["/usr/local/bin/dockerd-entrypoint.sh", "/bin/plugin"]
